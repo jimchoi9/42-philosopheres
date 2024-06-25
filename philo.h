@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include "./libft_src/libft.h"
 struct s_data;
 
@@ -14,6 +15,7 @@ typedef struct s_ph
     int eat_time;
     pthread_t thread;
    struct s_data *data;
+
 }t_ph;
 
 typedef struct s_data
@@ -29,4 +31,5 @@ typedef struct s_data
     pthread_mutex_t dead;
     pthread_mutex_t start;
 	t_ph **philo;
+	   struct timeval time;
 }t_data;

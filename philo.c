@@ -36,12 +36,10 @@ void put_forks(Philosopher* p) {
 }
 
 void* philosopher(void* arg) {
-    pthread_mutex_lock(&start);  // 왼쪽 포크 뮤텍스 획득
-    pthread_mutex_unlock(&start);  // 오른쪽 포크 뮤텍스 
+    pthread_mutex_lock(&start);
+    pthread_mutex_unlock(&start); 
     Philosopher* p = (Philosopher*)arg;
 	int i = 0;
-	if (p->id % 2 == 0)
-		usleep(100000);
     while (i < 6) {
         take_forks(p);
         eat(p);
@@ -66,12 +64,12 @@ int init_data(char **argv , int argc, t_data *data)
 	if (argc == 6)
 		data->must_eat = ft_atoi(argv[5]);
 
-
 	int i=1;
-	data->philo  = ft_calloc(data->num  + 1, sizeof(t_ph *));
+	data->philo  = ft_calloc(data->num  + 2, sizeof(t_ph *));
 	// data->fork = ft_calloc(data->num, sizeof(pthread_mutex_t)); 
 	while (i <= data->num)
 	{
+		pthread_mutex_init(&data->fork[i], NULL);
 		data->philo[i] = ft_calloc(1, sizeof(t_ph));
 		data->philo[i]->id = i;
 		data->philo[i]->right = i;
@@ -82,11 +80,29 @@ int init_data(char **argv , int argc, t_data *data)
 
 }
 
+
+
 int main(int argc, char *argv[])
 {
 	t_ph *philo;
 	t_data *data;
 
+	double begin, end;
+
+	// // 시작하는 시간 받아오기
+	// gettimeofday(&data->time, NULL);
+	// begin = (data->time.tv_sec) * 1000 + (data->time.tv_usec) / 1000 ;
+
+	// // 시간 측정을 진행할 부분
+	// usleep(1500000);
+
+	// // 끝나는 시간 받아오기
+	// gettimeofday(&data->time, NULL);
+	// end = (data->time.tv_sec) * 1000 + (data->time.tv_usec) / 1000 ;
+
+	// // 출력
+	// printf("Execution time %f\n", (end - begin) / 1000);
+	// return (0);
 	data = ft_calloc(1, sizeof(t_data));
 	if (argc != 5 && argc != 6)
 		return (1);
