@@ -6,24 +6,30 @@ double	get_time_stamp(t_data *data)
 
 	gettimeofday(&(data->time), NULL);
 	 now = (data->time.tv_sec * 1000 +  data->time.tv_usec / 1000);
-	// printf("start_time : %.0f\n", data->start_time);	
-	// printf("now_time : %.0f\n", now);	
-	// printf("%.0f ", now - data->start_time);	
 	return (now - data->start_time);
 }
 
 void	philo_eating(t_ph *philo)
-{		
-	// if (philo->data->fork[philo->left])
+{	
+	pthread_mutex_lock(&philo->data->fork_mutex[philo->left]);
+	if (philo->data->fork[philo->left])
 		{
+			pthread_mutex_unlock(&philo->data->fork_mutex[philo->left]);
 			pthread_mutex_lock(&philo->data->fork_mutex[philo->left]);
 			philo->data->fork[philo->left] = philo->id;
 		}
-		// if (philo->data->fork[philo->right])
+	else
+		pthread_mutex_unlock(&philo->data->fork_mutex[philo->left]);
+	pthread_mutex_lock(&philo->data->fork_mutex[philo->right]);
+		if (philo->data->fork[philo->right])
 		{
+			pthread_mutex_unlock(&philo->data->fork_mutex[philo->right]);
 			pthread_mutex_lock(&philo->data->fork_mutex[philo->right]);
 			philo->data->fork[philo->right] =  philo->id;
 		}
+	else
+		pthread_mutex_unlock(&philo->data->fork_mutex[philo->right]);
+
 
 
 		// DKJHFS
@@ -33,7 +39,6 @@ void	philo_eating(t_ph *philo)
 			printf("%.0f %d is eating\n", get_time_stamp(philo->data), philo->id);
 			pthread_mutex_unlock(&philo->data->write);
 			philo->eat_count++;
-			philo->data->check ++;
 			philo->data->fork[philo->left] = 1;
 			philo->data->fork[philo->right] = 1;
 			philo->last_eat = get_time_stamp(philo->data);
