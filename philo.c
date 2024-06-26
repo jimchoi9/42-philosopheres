@@ -1,158 +1,179 @@
-
 #include "philo.h"
 
-#define N 5  // 철학자 수
-#define LEFT(i) ((i + N - 1) % N)
-#define RIGHT(i) ((i + 1) % N)
-pthread_mutex_t mutex[5];
-pthread_mutex_t start;
-
-int cnt = 0;
-
-
-
-typedef struct Philosopher {
-    int id;
-} Philosopher;
-
-void think(Philosopher* p)
+double	get_time_stamp(t_data *data)
 {
-	printf("%d is thinking\n",p->id);
-}
-void eat(Philosopher* p)
-{
-	printf("%d is eating\n", p->id);
-}
-void take_forks(Philosopher* p) {
-    pthread_mutex_lock(&mutex[p->id]);  // 왼쪽 포크 뮤텍스 획득
-	printf("%d is taking left forks\n",p->id);
-    pthread_mutex_lock(&mutex[RIGHT(p->id)]);  // 오른쪽 포크 뮤텍스 획득
-	printf("%d is taking right forks\n",p->id);
+	double now;
+
+	gettimeofday(&(data->time), NULL);
+	 now = (data->time.tv_sec * 1000 +  data->time.tv_usec / 1000);
+	// printf("start_time : %.0f\n", data->start_time);	
+	// printf("now_time : %.0f\n", now);	
+	// printf("%.0f ", now - data->start_time);	
+	return (now - data->start_time);
 }
 
-void put_forks(Philosopher* p) {
-    pthread_mutex_unlock(&mutex[p->id]);  // 왼쪽 포크 뮤텍스 반환
-    pthread_mutex_unlock(&mutex[RIGHT(p->id)]);  // 오른쪽 포크 뮤텍스 반환
+void	philo_eating(t_ph *philo)
+{		
+	// if (philo->data->fork[philo->left])
+		{
+			pthread_mutex_lock(&philo->data->fork_mutex[philo->left]);
+			philo->data->fork[philo->left] = philo->id;
+		}
+		// if (philo->data->fork[philo->right])
+		{
+			pthread_mutex_lock(&philo->data->fork_mutex[philo->right]);
+			philo->data->fork[philo->right] =  philo->id;
+		}
+
+
+		// DKJHFS
+		if (philo->data->fork[philo->left] ==  philo->id && philo->data->fork[philo->right] ==  philo->id)
+		{
+			pthread_mutex_lock(&philo->data->write);
+			printf("%.0f %d is eating\n", get_time_stamp(philo->data), philo->id);
+			pthread_mutex_unlock(&philo->data->write);
+			philo->eat_count++;
+			philo->data->check ++;
+			philo->data->fork[philo->left] = 1;
+			philo->data->fork[philo->right] = 1;
+			philo->last_eat = get_time_stamp(philo->data);
+			usleep(philo->data->eat_time * 1000);
+			pthread_mutex_unlock(&philo->data->fork_mutex[philo->left]);
+			pthread_mutex_unlock(&philo->data->fork_mutex[philo->right]);
+
+		}
+
 }
+
+
 
 void* philosopher(void* arg) {
-    pthread_mutex_lock(&start);
-    pthread_mutex_unlock(&start); 
-    Philosopher* p = (Philosopher*)arg;
-	int i = 0;
-    while (i < 6) {
-        take_forks(p);
-        eat(p);
-		i++;
-        put_forks(p);
-		usleep(100000);
-        think(p);
-    }
-	printf("done %d\n", p->id);
-	return (arg);
-}
+    t_ph *philo;
 
-//  철학자의 수, 철학자의 수명, 밥을 먹는데 걸리는 시간, 잠자는 시간, [각 철학자가 최소한 밥을 먹어야 하는 횟수]
+    philo = *(t_ph **)arg;
+	philo->last_eat = get_time_stamp(philo->data);
+    pthread_mutex_lock(&philo->data->start);
+    pthread_mutex_unlock(&philo->data->start);
+	if (philo->id % 2 == 0) 
+		usleep(250000);
+
+
+	while(1)
+	{
+		if (get_time_stamp(philo->data) - philo->last_eat > philo->data->life_time)
+		{
+			printf("%.0f %d died\n", get_time_stamp(philo->data), philo->id);
+
+			break;
+		}
+		if (philo->eat_count == philo->data->must_eat && philo->eat_count != 0)
+			break ;
+		philo_eating(philo);
+			pthread_mutex_lock(&philo->data->write);
+		printf("%.0f %d is sleeping\n", get_time_stamp(philo->data), philo->id);
+			pthread_mutex_unlock(&philo->data->write);
+		usleep(philo->data->sleep_time * 1000);
+			pthread_mutex_lock(&philo->data->write);
+
+		printf("%.0f %d is thinking\n", get_time_stamp(philo->data), philo->id);
+			pthread_mutex_unlock(&philo->data->write);
+
+	}
+
+    return (arg);
+}
 
 int init_data(char **argv , int argc, t_data *data)
 {
-	data->num = ft_atoi(argv[1]);
-	data->life_time = ft_atoi(argv[2]);
-	data->eat_time = ft_atoi(argv[3]);
-	data->sleep_time = ft_atoi(argv[4]);
-	data->must_eat = 0; // check
-	if (argc == 6)
-		data->must_eat = ft_atoi(argv[5]);
+    data->num = ft_atoi(argv[1]);
+    data->life_time = ft_atoi(argv[2]);
+    data->eat_time = ft_atoi(argv[3]);
+    data->sleep_time = ft_atoi(argv[4]);
+    data->must_eat = 0; // check
+    if (argc == 6)
+        data->must_eat = ft_atoi(argv[5]);
 
-	int i=1;
-	data->philo  = ft_calloc(data->num  + 2, sizeof(t_ph *));
-	// data->fork = ft_calloc(data->num, sizeof(pthread_mutex_t)); 
-	while (i <= data->num)
-	{
-		pthread_mutex_init(&data->fork[i], NULL);
-		data->philo[i] = ft_calloc(1, sizeof(t_ph));
-		data->philo[i]->id = i;
-		data->philo[i]->right = i;
-		data->philo[i]->left = i % data->num + 1;
-		i++;
-	}
-	return 0;
+    int i = 1;
+    data->philo  = ft_calloc(data->num + 2, sizeof(t_ph *));
 
+    pthread_mutex_init(&data->write, NULL);
+    pthread_mutex_init(&data->start, NULL);
+
+	gettimeofday(&(data->time), NULL);
+
+	data->start_time = data->time.tv_sec * 1000 + data->time.tv_usec / 1000;
+	data->fork = ft_calloc(data->num + 2, sizeof(int)); 
+	data->fork_mutex = ft_calloc(data->num + 2, sizeof(pthread_mutex_t));
+    for (i = 1; i <= data->num; i++) {
+		data->fork[i] = 1;
+		// data->fork_mutex = calloc(data->num, sizeof(pthread_mutex_t));
+        pthread_mutex_init(&data->fork_mutex[i], NULL);
+    }
+
+    for (i = 1; i <= data->num; i++)
+    {
+        data->philo[i] = calloc(1, sizeof(t_ph));
+        data->philo[i]->id = i;
+        data->philo[i]->right = i;
+        data->philo[i]->left = i % data->num + 1;
+        data->philo[i]->data = data; // philo 구조체에 data 구조체 참조 설정
+        data->philo[i]->eat_count = 0; // philo 구조체에 data 구조체 참조 설정
+    }
+    return 0;
 }
 
+void print_parsing(t_data *data)
+{
+    printf("num = %d\n", data->num);
+    printf("life_time = %d\n", data->life_time);
+    printf("eat_time = %d\n", data->eat_time);
+    printf("sleep_time = %d\n", data->sleep_time);
+    printf("must_eat = %d\n", data->must_eat);
 
+    for (int i = 1; i <= data->num; i++)
+    {
+        printf("%d left = %d , right = %d\n", data->philo[i]->id, data->philo[i]->right, data->philo[i]->left);
+        // printf("thread %ld eat_count = %d , eat_time = %d\n", data->philo[i]->thread, data->philo[i]->eat_count, data->philo[i]->eat_time);
+    }
+}
 
 int main(int argc, char *argv[])
 {
-	t_ph *philo;
-	t_data *data;
+    t_ph *philo;
+    t_data *data;
 
-	double begin, end;
+    data = calloc(1, sizeof(t_data));
+    if (argc != 5 && argc != 6)
+        return (1);
+    if (init_data(argv, argc, data))
+        return (1);
 
-	// // 시작하는 시간 받아오기
-	// gettimeofday(&data->time, NULL);
-	// begin = (data->time.tv_sec) * 1000 + (data->time.tv_usec) / 1000 ;
+    pthread_mutex_lock(&data->start);  // 시작 뮤텍스 획득
 
-	// // 시간 측정을 진행할 부분
-	// usleep(1500000);
+    for(int i = 1; i <= data->num; i++) // 스레드 생생성
+    {
+        pthread_create(&data->philo[i]->thread, NULL, philosopher, &data->philo[i]);  // 이중 포인터 전달
+    }
+    pthread_mutex_unlock(&data->start);  // 시작 뮤텍스 해제
 
-	// // 끝나는 시간 받아오기
-	// gettimeofday(&data->time, NULL);
-	// end = (data->time.tv_sec) * 1000 + (data->time.tv_usec) / 1000 ;
-
-	// // 출력
-	// printf("Execution time %f\n", (end - begin) / 1000);
-	// return (0);
-	data = ft_calloc(1, sizeof(t_data));
-	if (argc != 5 && argc != 6)
-		return (1);
-	if (init_data(argv, argc, data))
-		return (1);
-	printf("num = %d\n", data->num);
-	printf("life_time = %d\n", data->life_time);
-	printf("eat_time = %d\n", data->eat_time);
-	printf("sleep_time = %d\n", data->sleep_time);
-	printf("must_eat = %d\n", data->must_eat);
+    for(int i = 1; i <= data->num; i++)
+    {
+        pthread_join(data->philo[i]->thread, NULL);
+    }
 
 
-	for (int i = 1; i <= data->num; i++)
-	{
-		printf("%d left = %d , right = %d\n", data->philo[i]->id, data->philo[i]->right, data->philo[i]->left);
-		printf("thread %d eat_count = %d , eat_time = %d\n", data->philo[i]->thread, data->philo[i]->eat_count, data->philo[i]->eat_time);
-	}
-	// for(int i = 0; i < 5; i++)
-	// {
-	// 	pthread_mutex_init(&mutex[i],NULL);
-	// 	philosophers[i].id = i;
-		
-	// }
-	// for(int i = 0; i < 5; i++)
-	// {
+    // 메모리 해제
+    for (int i = 1; i <= data->num; i++) {
+        free(data->philo[i]);
+    }
+    for (int i = 1; i <= data->num; i++) {
+        pthread_mutex_destroy(&data->fork_mutex[i]);
+    }
 
-    // pthread_mutex_lock(&start);  // 왼쪽 포크 뮤텍스 획득
-	// 	pthread_create(&thread[i], NULL, philosopher, &philosophers[i]);
-    // pthread_mutex_unlock(&start);  // 오른쪽 포크 뮤텍스 반환
-		
-	// }
-	// for(int i = 0; i < 5; i++)
-	// {
-	// 	pthread_join(thread[i], NULL);
-		
-	// }
-	// for(int i = 0; i < 5; i++)
-	// {
-	// 	pthread_mutex_destroy(&mutex[i]);
-	/*
-	1 = 1, 2
-	2 = 2, 3 i % 5 + 1
-	3 = 3, 4
-	4 = 4, 5
-	5 = 5, 1  
+    free(data->philo);
+    free(data->fork);
+    free(data->fork_mutex);
+    free(data);
 
-	*/
-	// }
-
-	printf("done !\n");
-
+    return 0;
 }
-
