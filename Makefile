@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: jimchoi <jimchoi@student.42.fr>            +#+  +:+       +#+         #
+#    By: jimchoi <jimchoi@student.42seoul.kr>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/22 11:45:19 by jimchoi           #+#    #+#              #
-#    Updated: 2024/06/26 18:21:46 by jimchoi          ###   ########.fr        #
+#    Updated: 2024/06/27 16:15:54 by jimchoi          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,15 +14,12 @@ CC = cc
 CFLAGS = 
 #-Wall -Werror -Wextra
 NAME = philosophers
-LIBFT_DIR = ./libft_src/
-LIBFT = -L$(LIBFT_DIR) -lft -I./libft_src
-COMFILE_FLAGS =
 
 ifdef DEBUG
 	CFLAGS += -g3 -fsanitize=thread
 endif
 
-SRCS = philo.c
+SRCS = philo.c philo_utils.c
 
 OBJS = $(SRCS:.c=.o)
 
@@ -32,17 +29,14 @@ all: $(NAME)
 	$(CC) $(CFLAGS)  -c $< -o $@ -I./libft_src
 
 $(NAME): $(OBJS)
-	make bonus -C $(LIBFT_DIR)
-	$(CC)  $(CFLAGS) -o $@ $(OBJS) $(LIBFT)
+	$(CC)  $(CFLAGS) -o $@ $(OBJS)
 
 clean:
 	rm -rf $(OBJS)
-	make -C $(LIBFT_DIR) clean
 
 fclean: clean
 	rm -f $(NAME)
-	make -C $(LIBFT_DIR) fclean
 
 re: fclean all
 
-.PHONY: all clean fclean re libft
+.PHONY: all clean fclean re

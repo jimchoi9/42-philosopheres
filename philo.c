@@ -1,13 +1,6 @@
 #include "philo.h"
 
-double	get_time_stamp(t_data *data)
-{
-	double now;
 
-	gettimeofday(&(data->time), NULL);
-	 now = (data->time.tv_sec * 1000 +  data->time.tv_usec / 1000);
-	return (now - data->start_time);
-}
 
 void	philo_eating(t_ph *philo)
 {	
@@ -50,7 +43,17 @@ void	philo_eating(t_ph *philo)
 
 }
 
-
+int is_alive(t_ph *philo)
+{
+    pthread_mutex_lock(&philo->data->dead_mutex);
+        if (philo->data->is_dead)
+        {
+            pthread_mutex_unlock(&philo->data->dead_mutex);
+            return (0);
+        }
+    pthread_mutex_unlock(&philo->data->dead_mutex);
+        return (1);
+}
 
 void* philosopher(void* arg) {
     t_ph *philo;
@@ -60,72 +63,51 @@ void* philosopher(void* arg) {
     pthread_mutex_lock(&philo->data->start);
     pthread_mutex_unlock(&philo->data->start);
 	if (philo->id % 2 == 0) 
-		usleep(250000);
+		usleep(1000);
 
 
 	while(1)
 	{
-		if (get_time_stamp(philo->data) - philo->last_eat > philo->data->life_time)
+        if (!is_alive(philo))
+            break ;
+		else if (get_time_stamp(philo->data) - philo->last_eat > philo->data->life_time)
 		{
 			printf("%.0f %d died\n", get_time_stamp(philo->data), philo->id);
-
-			break;
+            pthread_mutex_lock(&philo->data->dead_mutex);
+            philo->data->is_dead = 1;
+            pthread_mutex_unlock(&philo->data->dead_mutex);
+			break ;
 		}
 		if (philo->eat_count == philo->data->must_eat && philo->eat_count != 0)
-			break ;
-		philo_eating(philo);
+			break  ;
+        if (!is_alive(philo))
+            break ;
+		else
+            philo_eating(philo);
+        if (!is_alive(philo))
+            break ;
+        else
+        {
 			pthread_mutex_lock(&philo->data->write);
 		printf("%.0f %d is sleeping\n", get_time_stamp(philo->data), philo->id);
 			pthread_mutex_unlock(&philo->data->write);
-		usleep(philo->data->sleep_time * 1000);
+            usleep(philo->data->sleep_time * 1000);
+        }
+        if (!is_alive(philo))
+            break ;
+        else
+        {
 			pthread_mutex_lock(&philo->data->write);
 
-		printf("%.0f %d is thinking\n", get_time_stamp(philo->data), philo->id);
+            printf("%.0f %d is thinking\n", get_time_stamp(philo->data), philo->id);
 			pthread_mutex_unlock(&philo->data->write);
-
+        }
 	}
 
     return (arg);
 }
 
-int init_data(char **argv , int argc, t_data *data)
-{
-    data->num = ft_atoi(argv[1]);
-    data->life_time = ft_atoi(argv[2]);
-    data->eat_time = ft_atoi(argv[3]);
-    data->sleep_time = ft_atoi(argv[4]);
-    data->must_eat = 0; // check
-    if (argc == 6)
-        data->must_eat = ft_atoi(argv[5]);
 
-    int i = 1;
-    data->philo  = ft_calloc(data->num + 2, sizeof(t_ph *));
-
-    pthread_mutex_init(&data->write, NULL);
-    pthread_mutex_init(&data->start, NULL);
-
-	gettimeofday(&(data->time), NULL);
-
-	data->start_time = data->time.tv_sec * 1000 + data->time.tv_usec / 1000;
-	data->fork = ft_calloc(data->num + 2, sizeof(int)); 
-	data->fork_mutex = ft_calloc(data->num + 2, sizeof(pthread_mutex_t));
-    for (i = 1; i <= data->num; i++) {
-		data->fork[i] = 1;
-		// data->fork_mutex = calloc(data->num, sizeof(pthread_mutex_t));
-        pthread_mutex_init(&data->fork_mutex[i], NULL);
-    }
-
-    for (i = 1; i <= data->num; i++)
-    {
-        data->philo[i] = calloc(1, sizeof(t_ph));
-        data->philo[i]->id = i;
-        data->philo[i]->right = i;
-        data->philo[i]->left = i % data->num + 1;
-        data->philo[i]->data = data; // philo 구조체에 data 구조체 참조 설정
-        data->philo[i]->eat_count = 0; // philo 구조체에 data 구조체 참조 설정
-    }
-    return 0;
-}
 
 void print_parsing(t_data *data)
 {
@@ -134,12 +116,40 @@ void print_parsing(t_data *data)
     printf("eat_time = %d\n", data->eat_time);
     printf("sleep_time = %d\n", data->sleep_time);
     printf("must_eat = %d\n", data->must_eat);
+    printf("must_eat = %f\n", data->start_time);
 
-    for (int i = 1; i <= data->num; i++)
+    for (int i = 0; i < data->num; i++)
     {
         printf("%d left = %d , right = %d\n", data->philo[i]->id, data->philo[i]->right, data->philo[i]->left);
         // printf("thread %ld eat_count = %d , eat_time = %d\n", data->philo[i]->thread, data->philo[i]->eat_count, data->philo[i]->eat_time);
     }
+}
+
+
+void *check_dead(void *arg)
+{
+    t_data *data = *(t_data **)arg;
+    printf("############check_dead############\n isdead = %d\n", data->is_dead);
+
+    // pthread_mutex_lock(&data->check_dead);
+    // printf("############check_dead############\n");
+    while(1)
+    {
+        pthread_mutex_lock(&data->dead_mutex);
+        if (data->is_dead)
+        {
+            data->is_dead = 2;
+            pthread_mutex_unlock(&data->dead_mutex);
+            break ;
+
+        }
+        pthread_mutex_unlock(&data->dead_mutex);
+        // usleep(100);
+    }
+    // pthread_mutex_unlock(&data->check_dead);
+    printf("############check_dead_end############\n");
+
+        return ((void *)1);
 }
 
 int main(int argc, char *argv[])
@@ -148,30 +158,55 @@ int main(int argc, char *argv[])
     t_data *data;
 
     data = calloc(1, sizeof(t_data));
+    memset(data, 0, sizeof(t_data));
     if (argc != 5 && argc != 6)
         return (1);
     if (init_data(argv, argc, data))
         return (1);
+// print_parsing(data);
+    pthread_t check_thread;
+
+    printf("############main############\n isdead = %d\n", data->is_dead);
+    pthread_create(&check_thread, NULL, check_dead, &data);  // 이중 포인터 전달
+
 
     pthread_mutex_lock(&data->start);  // 시작 뮤텍스 획득
 
-    for(int i = 1; i <= data->num; i++) // 스레드 생생성
+    for(int i = 0; i < data->num; i++) // 스레드 생생성
     {
         pthread_create(&data->philo[i]->thread, NULL, philosopher, &data->philo[i]);  // 이중 포인터 전달
     }
     pthread_mutex_unlock(&data->start);  // 시작 뮤텍스 해제
 
-    for(int i = 1; i <= data->num; i++)
+
+
+    // for(int i = 1; i <= data->num; i++)
+    // usleep(10000);
+    // pthread_mutex_lock(&data->check_dead);
+    int status = 0;
+    // pthread_detach(check_thread);
+    pthread_join(check_thread, (void *)&status);
+    printf("num = %d\n", status);
+    for(int i = 0; i < data->num; i++)
     {
-        pthread_join(data->philo[i]->thread, NULL);
+        // printf("1\n");
+        // pthread_mutex_lock(&data->dead_mutex);
+        // pthread_join(data->philo[i]->thread, NULL);
+        pthread_detach(data->philo[i]->thread);
+        // pthread_mutex_unlock(&data->dead_mutex);
     }
+
 
 
     // 메모리 해제
-    for (int i = 1; i <= data->num; i++) {
+
+    printf("2\n");
+
+
+    for (int i = 0; i < data->num; i++) {
         free(data->philo[i]);
     }
-    for (int i = 1; i <= data->num; i++) {
+    for (int i = 0; i < data->num; i++) {
         pthread_mutex_destroy(&data->fork_mutex[i]);
     }
 
@@ -179,6 +214,8 @@ int main(int argc, char *argv[])
     free(data->fork);
     free(data->fork_mutex);
     free(data);
+    printf("############main_end############\n isdead = %d\n", data->is_dead);
 
+    // pthread_mutex_unlock(&data->check_dead);
     return 0;
 }
