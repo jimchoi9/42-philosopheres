@@ -5,7 +5,7 @@
 void	philo_eating(t_ph *philo)
 {	
 	pthread_mutex_lock(&philo->data->fork_mutex[philo->left]);
-	if (philo->data->fork[philo->left])
+	if (philo->data->fork[philo->left] == -1)
 		{
 			pthread_mutex_unlock(&philo->data->fork_mutex[philo->left]);
 			pthread_mutex_lock(&philo->data->fork_mutex[philo->left]);
@@ -14,7 +14,7 @@ void	philo_eating(t_ph *philo)
 	else
 		pthread_mutex_unlock(&philo->data->fork_mutex[philo->left]);
 	pthread_mutex_lock(&philo->data->fork_mutex[philo->right]);
-		if (philo->data->fork[philo->right])
+		if (philo->data->fork[philo->right] == -1)
 		{
 			pthread_mutex_unlock(&philo->data->fork_mutex[philo->right]);
 			pthread_mutex_lock(&philo->data->fork_mutex[philo->right]);
@@ -32,8 +32,8 @@ void	philo_eating(t_ph *philo)
 			printf("%.0f %d is eating\n", get_time_stamp(philo->data), philo->id);
 			pthread_mutex_unlock(&philo->data->write);
 			philo->eat_count++;
-			philo->data->fork[philo->left] = 1;
-			philo->data->fork[philo->right] = 1;
+			philo->data->fork[philo->left] = -1;
+			philo->data->fork[philo->right] = -1;
 			philo->last_eat = get_time_stamp(philo->data);
 			usleep(philo->data->eat_time * 1000);
 			pthread_mutex_unlock(&philo->data->fork_mutex[philo->left]);
@@ -58,7 +58,7 @@ int is_alive(t_ph *philo)
 void* philosopher(void* arg) {
     t_ph *philo;
 
-    philo = *(t_ph **)arg;
+    philo = *(t_ph**)arg;
 	philo->last_eat = get_time_stamp(philo->data);
     pthread_mutex_lock(&philo->data->start);
     pthread_mutex_unlock(&philo->data->start);
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
     free(data->fork);
     free(data->fork_mutex);
     free(data);
-    printf("############main_end############\n isdead = %d\n", data->is_dead);
+    // printf("############main_end############\n isdead = %d\n", data->is_dead);
 
     // pthread_mutex_unlock(&data->check_dead);
     return 0;

@@ -6,7 +6,7 @@
 #    By: jimchoi <jimchoi@student.42seoul.kr>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/22 11:45:19 by jimchoi           #+#    #+#              #
-#    Updated: 2024/06/27 16:15:54 by jimchoi          ###   ########.fr        #
+#    Updated: 2024/06/29 03:47:19 by jimchoi          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -17,6 +17,9 @@ NAME = philosophers
 
 ifdef DEBUG
 	CFLAGS += -g3 -fsanitize=thread
+endif
+ifdef DEBUG_S
+	CFLAGS += -g3 -fsanitize=address
 endif
 
 SRCS = philo.c philo_utils.c
