@@ -152,6 +152,7 @@ void *check_dead(void *arg)
         return ((void *)1);
 }
 
+
 int main(int argc, char *argv[])
 {
     t_ph *philo;
